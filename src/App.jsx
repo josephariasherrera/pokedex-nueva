@@ -31,6 +31,7 @@ function leerFavoritos() {
 
 function App() {
   const [favoritos, setFavoritos] = useState(leerFavoritos)
+  const [cantidadUsuarios, setCantidadUsuarios] = useState(0)
 
   useEffect(() => {
     try {
@@ -59,13 +60,13 @@ function App() {
 
   return (
     <div className="app">
-      <Navbar cantidadFavoritos={favoritos.length} />
+      <Navbar
+        cantidadFavoritos={favoritos.length}
+        cantidadUsuarios={cantidadUsuarios}
+      />
 
       <Routes>
-        <Route
-          path="/"
-          element={<Inicio />}
-        />
+        <Route path="/" element={<Inicio />} />
 
         <Route
           path="/lista"
@@ -89,7 +90,11 @@ function App() {
 
         <Route
           path="/registro"
-          element={<Registro />}
+          element={
+            <Registro
+              onCantidadUsuariosChange={setCantidadUsuarios}
+            />
+          }
         />
 
         <Route
@@ -102,20 +107,34 @@ function App() {
           }
         />
 
-        <Route
-          path="*"
-          element={<NotFound />}
-        />
+        <Route path="*" element={<NotFound />} />
       </Routes>
 
       <footer className="footer">
         <p>
-          Pokédex · Explora, descubre y colecciona Pokémon.
+          <strong>Pokédex</strong> · Explora, descubre y colecciona Pokémon.
         </p>
 
         <p>
-          Información de Pokémon proporcionada por PokéAPI.
+          API utilizada:{' '}
+          <a
+            href="https://pokeapi.co/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            PokéAPI
+          </a>
+          {' · '}
+          <a
+            href="https://pokeapi.co/docs/v2"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Documentación oficial
+          </a>
         </p>
+
+        <p>Proyecto académico de Tecnologías Web · Unidad 2</p>
       </footer>
     </div>
   )

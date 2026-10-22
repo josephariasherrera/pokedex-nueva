@@ -1,7 +1,10 @@
 
 import { NavLink } from 'react-router-dom'
 
-function Navbar({ cantidadFavoritos = 0 }) {
+function Navbar({
+  cantidadFavoritos = 0,
+  cantidadUsuarios = 0,
+}) {
   const enlaces = [
     { texto: 'Inicio', ruta: '/' },
     { texto: 'Pokédex', ruta: '/lista' },
@@ -27,8 +30,17 @@ function Navbar({ cantidadFavoritos = 0 }) {
             }
           >
             {enlace.texto}
+
             {enlace.ruta === '/favoritos' && (
-              <span className="navbar-contador">{cantidadFavoritos}</span>
+              <span className="navbar-contador">
+                {cantidadFavoritos}
+              </span>
+            )}
+
+            {enlace.ruta === '/registro' && (
+              <span className="navbar-contador">
+                {cantidadUsuarios}
+              </span>
             )}
           </NavLink>
         ))}
@@ -38,4 +50,3 @@ function Navbar({ cantidadFavoritos = 0 }) {
 }
 
 export default Navbar
-

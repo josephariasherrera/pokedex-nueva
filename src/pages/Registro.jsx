@@ -1,191 +1,311 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
-const CLAVE_USUARIOS = 'pokedex-usuarios'
-
-function leerUsuarios() {
-  try {
-    const datos = localStorage.getItem(CLAVE_USUARIOS)
-    return datos ? JSON.parse(datos) : []
-  } catch {
-    return []
-  }
+const formularioInicial = {
+  identificacion: '',
+  nombre: '',
+  correo: '',
 }
 
-function Registro() {
-  const [nombre, setNombre] = useState('')
-  const [correo, setCorreo] = useState('')
-  const [contrasena, setContrasena] = useState('')
-  const [confirmacion, setConfirmacion] = useState('')
-  const [mensaje, setMensaje] = useState('')
-  const [tipoMensaje, setTipoMensaje] = useState('')
+function Registro({ onCantidadUsuariosChange }) {
+  const [usuarios, setUsuarios] = useState([])
+  const [formulario, setFormulario] = useState(formularioInicial)
+  const [identificacionEditando, setIdentificacionEditando] = useState(null)
+  const [mensaje, setMensaje] = useState(null)
 
-  function manejarRegistro(evento) {
+  const editando = identificacionEditando !== null
+
+  useEffect(() => {
+    onCantidadUsuariosChange?.(usuarios.length)
+  }, [usuarios, onCantidadUsuariosChange])
+
+  function manejarCambio(evento) {
+    const { name, value } = evento.target
+
+    setFormulario((actual) => ({
+      ...actual,
+      [name]: value,
+    }))
+
+    setMensaje(null)
+  }
+
+  function limpiarFormulario() {
+    setFormulario(formularioInicial)
+    setIdentificacionEditando(null)
+  }
+
+  function manejarEnvio(evento) {
     evento.preventDefault()
-    setMensaje('')
-    setTipoMensaje('')
 
-    const nombreLimpio = nombre.trim()
-    const correoLimpio = correo.trim().toLowerCase()
+    const identificacion = formulario.identificacion.trim()
+    const nombre = formulario.nombre.trim()
+    const correo = formulario.correo.trim()
 
-    if (!nombreLimpio || !correoLimpio || !contrasena || !confirmacion) {
-      setMensaje('Completa todos los campos.')
-      setTipoMensaje('error')
+    if (!identificacion || !nombre || !correo) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'Todos los campos son obligatorios.',
+      })
       return
     }
 
-    if (nombreLimpio.length < 2) {
-      setMensaje('El nombre debe tener al menos 2 caracteres.')
-      setTipoMensaje('error')
+    if (!/^\d+$/.test(identificacion)) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'La identificación debe contener solamente números.',
+      })
       return
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoLimpio)) {
-      setMensaje('Escribe un correo electrónico válido.')
-      setTipoMensaje('error')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'Escribe un correo electrónico válido.',
+      })
       return
     }
 
-    if (contrasena.length < 8) {
-      setMensaje('La contraseña debe tener al menos 8 caracteres.')
-      setTipoMensaje('error')
+    const identificacionDuplicada = usuarios.some(
+      (usuario) =>
+        usuario.identificacion === identificacion &&
+        usuario.identificacion !== identificacionEditando,
+    )
+
+    if (identificacionDuplicada) {
+      setMensaje({
+        tipo: 'error',
+        texto: `Ya existe un usuario con la identificación ${identificacion}.`,
+      })
       return
     }
 
-    if (contrasena !== confirmacion) {
-      setMensaje('Las contraseñas no coinciden.')
-      setTipoMensaje('error')
-      return
-    }
-
-    const usuarios = leerUsuarios()
-
-    if (usuarios.some((usuario) => usuario.correo === correoLimpio)) {
-      setMensaje('Ya existe un registro con ese correo electrónico.')
-      setTipoMensaje('error')
-      return
-    }
-
-    const nuevoUsuario = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      nombre: nombreLimpio,
-      correo: correoLimpio,
-      creadoEn: new Date().toISOString(),
-    }
-
-    try {
-      /*
-       * Esta demostración no guarda la contraseña.
-       * El registro se almacena únicamente en este navegador.
-       */
-      localStorage.setItem(
-        CLAVE_USUARIOS,
-        JSON.stringify([...usuarios, nuevoUsuario]),
+    if (editando) {
+      setUsuarios((actuales) =>
+        actuales.map((usuario) =>
+          usuario.identificacion === identificacionEditando
+            ? { identificacion, nombre, correo }
+            : usuario,
+        ),
       )
 
-      setNombre('')
-      setCorreo('')
-      setContrasena('')
-      setConfirmacion('')
-      setMensaje('¡Registro creado correctamente!')
-      setTipoMensaje('exito')
-    } catch {
-      setMensaje('No fue posible guardar el registro en este navegador.')
-      setTipoMensaje('error')
+      setMensaje({
+        tipo: 'exito',
+        texto: 'Los datos del usuario se actualizaron correctamente.',
+      })
+    } else {
+      setUsuarios((actuales) => [
+        ...actuales,
+        { identificacion, nombre, correo },
+      ])
+
+      setMensaje({
+        tipo: 'exito',
+        texto: 'Usuario registrado correctamente.',
+      })
     }
+
+    limpiarFormulario()
+  }
+
+  function editarUsuario(usuario) {
+    setFormulario({
+      identificacion: usuario.identificacion,
+      nombre: usuario.nombre,
+      correo: usuario.correo,
+    })
+
+    setIdentificacionEditando(usuario.identificacion)
+    setMensaje(null)
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function eliminarUsuario(identificacion) {
+    const confirmado = window.confirm(
+      `¿Estás seguro de eliminar al usuario con identificación ${identificacion}?`,
+    )
+
+    if (!confirmado) {
+      return
+    }
+
+    setUsuarios((actuales) =>
+      actuales.filter(
+        (usuario) => usuario.identificacion !== identificacion,
+      ),
+    )
+
+    if (identificacionEditando === identificacion) {
+      limpiarFormulario()
+    }
+
+    setMensaje({
+      tipo: 'exito',
+      texto: 'Usuario eliminado correctamente.',
+    })
+  }
+
+  function cancelarEdicion() {
+    limpiarFormulario()
+    setMensaje({
+      tipo: 'exito',
+      texto: 'Se canceló la edición del usuario.',
+    })
   }
 
   return (
-    <main className="pagina-registro">
+    <main className="pagina-contenido registro-pagina">
+      <section className="encabezado-pagina">
+        <p className="texto-etiqueta">GESTIÓN DE USUARIOS</p>
+        <h1>Registro de usuarios</h1>
+        <p>
+          Registra y administra los usuarios de tu aplicación Pokédex.
+        </p>
+      </section>
+
       <section className="registro-panel">
-        <div className="registro-presentacion">
-          <span className="seccion-etiqueta">ÚNETE A LA AVENTURA</span>
-          <h1>Crea tu cuenta Pokémon</h1>
-          <p>
-            Regístrate para comenzar a organizar tu experiencia en nuestra
-            Pokédex.
-          </p>
+        <h2>{editando ? 'Editar usuario' : 'Registrar usuario'}</h2>
 
-          <div className="registro-decoracion" aria-hidden="true">
-            <span>◉</span>
-            <span>✦</span>
-            <span>⚡</span>
+        <p className="registro-descripcion">
+          Completa los tres campos para {editando ? 'actualizar' : 'registrar'}{' '}
+          un usuario.
+        </p>
+
+        {mensaje && (
+          <div
+            className={`mensaje-registro mensaje-${mensaje.tipo}`}
+            role="status"
+            aria-live="polite"
+          >
+            {mensaje.texto}
           </div>
-        </div>
+        )}
 
-        <div className="registro-formulario-contenedor">
-          <h2>Crear cuenta</h2>
-          <p className="registro-subtitulo">
-            Completa tus datos para registrarte.
-          </p>
+        <form className="formulario-registro" onSubmit={manejarEnvio}>
+          <div className="campo-registro">
+            <label htmlFor="identificacion">Identificación</label>
+            <input
+              id="identificacion"
+              name="identificacion"
+              type="text"
+              inputMode="numeric"
+              value={formulario.identificacion}
+              onChange={manejarCambio}
+              placeholder="Ej. 1234567890"
+              autoComplete="off"
+            />
+          </div>
 
-          <form className="registro-formulario" onSubmit={manejarRegistro}>
+          <div className="campo-registro">
             <label htmlFor="nombre">Nombre completo</label>
             <input
               id="nombre"
+              name="nombre"
               type="text"
-              value={nombre}
-              onChange={(evento) => setNombre(evento.target.value)}
-              placeholder="Tu nombre"
+              value={formulario.nombre}
+              onChange={manejarCambio}
+              placeholder="Escribe el nombre"
               autoComplete="name"
-              maxLength={80}
-              required
             />
+          </div>
 
+          <div className="campo-registro">
             <label htmlFor="correo">Correo electrónico</label>
             <input
               id="correo"
+              name="correo"
               type="email"
-              value={correo}
-              onChange={(evento) => setCorreo(evento.target.value)}
-              placeholder="correo@ejemplo.com"
+              value={formulario.correo}
+              onChange={manejarCambio}
+              placeholder="usuario@correo.com"
               autoComplete="email"
-              required
             />
+          </div>
 
-            <label htmlFor="contrasena">Contraseña</label>
-            <input
-              id="contrasena"
-              type="password"
-              value={contrasena}
-              onChange={(evento) => setContrasena(evento.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
-
-            <label htmlFor="confirmacion">Confirmar contraseña</label>
-            <input
-              id="confirmacion"
-              type="password"
-              value={confirmacion}
-              onChange={(evento) => setConfirmacion(evento.target.value)}
-              placeholder="Escribe la contraseña nuevamente"
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
-
-            {mensaje && (
-              <p
-                className={`registro-mensaje ${tipoMensaje}`}
-                role={tipoMensaje === 'error' ? 'alert' : 'status'}
-              >
-                {mensaje}
-              </p>
-            )}
-
-            <button type="submit" className="boton-principal registro-boton">
-              Crear mi cuenta
+          <div className="acciones-formulario">
+            <button type="submit" className="boton-principal">
+              {editando ? 'Guardar cambios' : 'Registrar'}
             </button>
-          </form>
 
-          <p className="registro-nota">
-            Esta versión es una demostración local, no un sistema de
-            autenticación real.
-          </p>
+            {editando && (
+              <button
+                type="button"
+                className="boton-secundario"
+                onClick={cancelarEdicion}
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+        </form>
+      </section>
+
+      <section className="usuarios-panel">
+        <div className="usuarios-encabezado">
+          <div>
+            <h2>Usuarios registrados</h2>
+            <p>Listado de usuarios creados durante esta sesión.</p>
+          </div>
+
+          <span className="usuarios-total">
+            Total: {usuarios.length}
+          </span>
         </div>
+
+        {usuarios.length === 0 ? (
+          <div className="usuarios-vacios">
+            <span className="usuarios-vacios-icono">♙</span>
+            <h3>Aún no hay usuarios registrados</h3>
+            <p>Utiliza el formulario para agregar el primero.</p>
+          </div>
+        ) : (
+          <div className="tabla-contenedor">
+            <table className="tabla-usuarios">
+              <thead>
+                <tr>
+                  <th>Identificación</th>
+                  <th>Nombre</th>
+                  <th>Correo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {usuarios.map((usuario) => (
+                  <tr key={usuario.identificacion}>
+                    <td data-label="Identificación">
+                      {usuario.identificacion}
+                    </td>
+                    <td data-label="Nombre">{usuario.nombre}</td>
+                    <td data-label="Correo">{usuario.correo}</td>
+                    <td data-label="Acciones">
+                      <div className="acciones-usuario">
+                        <button
+                          type="button"
+                          className="boton-editar"
+                          onClick={() => editarUsuario(usuario)}
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          className="boton-eliminar"
+                          onClick={() =>
+                            eliminarUsuario(usuario.identificacion)
+                          }
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </main>
   )
